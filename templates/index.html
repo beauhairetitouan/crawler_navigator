@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>HyWebMap Clone</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #d4d4d4;
+        }
+
+        .toolbar {
+            background-color: #ccc;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #999;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .graph-container {
+            background-color: white;
+            border: 1px solid #999;
+            padding: 20px;
+            min-height: 400px;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .stats-box {
+            background-color: white;
+            border: 1px solid #999;
+            padding: 15px;
+        }
+
+        .navigation-graph {
+            width: 100%;
+            height: 100%;
+        }
+
+        #url-input {
+            width: 60%;
+            padding: 5px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="toolbar">
+        <input type="url" id="url-input" placeholder="https://example.com">
+        <button onclick="analyzePage()">Analyser</button>
+    </div>
+
+    <div class="main-content">
+        <div class="graph-container">
+            <h3>Graphique de la navigation</h3>
+            <div id="navigation-graph" class="navigation-graph"></div>
+        </div>
+
+        <div class="stats-container">
+            <div class="stats-box">
+                <h3>Caractéristiques</h3>
+                <div id="stats">
+                    <p>Nombre de liens internes: <span id="internal-links">0</span></p>
+                    <p>Nombre de liens externes: <span id="external-links">0</span></p>
+                    <p>Nombre d'images: <span id="images-count">0</span></p>
+                    <p>Nombre de tableaux: <span id="tables-count">0</span></p>
+                    <p>Nombre de formulaires: <span id="forms-count">0</span></p>
+                </div>
+            </div>
+
+            <div class="stats-box">
+                <h3>Historique de la navigation</h3>
+                <div id="history"></div>
+            </div>
+
+            <div class="stats-box">
+                <h3>Niveau d'arborescence</h3>
+                <div id="tree-level"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/vis-network.min.js"></script>
+    <script>
+        let network = null;
+
+        function initNetwork() {
+            const container = document.getElementById('navigation-graph');
+            const data = {
+                nodes: new vis.DataSet([]),
+                edges: new vis.DataSet([])
+            };
+            const options = {
+                physics: {
+                    enabled: true,
+                    stabilization: true
+                },
+                nodes: {
+                    shape: 'box'
+                }
+            };
+            network = new vis.Network(container, data, options);
+        }
+
+        async function analyzePage() {
+            const url = document.getElementById('url-input').value;
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.json();
+                updateInterface(data);
+
+            } catch (error) {
+                console.error('Erreur:', error);
+            }
+        }
+
+        function updateInterface(data) {
+            // Mettre à jour les statistiques
+            document.getElementById('internal-links').textContent = data.internal_links.length;
+            document.getElementById('external-links').textContent = data.external_links.length;
+            document.getElementById('images-count').textContent = data.images_count;
+            document.getElementById('tables-count').textContent = data.tables_count;
+            document.getElementById('forms-count').textContent = data.forms_count;
+
+            // Mettre à jour le graphe
+            if (network === null) {
+                initNetwork();
+            }
+
+            const nodes = new vis.DataSet([
+                { id: 1, label: data.title }
+            ]);
+
+            const edges = new vis.DataSet();
+
+            data.internal_links.forEach((link, index) => {
+                nodes.add({ id: index + 2, label: link.text });
+                edges.add({ from: 1, to: index + 2 });
+            });
+
+            network.setData({ nodes: nodes, edges: edges });
+        }
+
+        // Initialiser le réseau au chargement
+        document.addEventListener('DOMContentLoaded', initNetwork);
+    </script>
+</body>
+
+</html>
