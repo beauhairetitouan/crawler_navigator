@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory, current_app
 from bs4 import BeautifulSoup
 import requests
 from urllib.parse import urljoin, urlparse
@@ -62,6 +62,11 @@ mapper = WebMapper()
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(current_app.root_path + '/static', 'favicon.ico')
+
 
 @app.route('/analyze', methods=['POST'])
 def analyze():

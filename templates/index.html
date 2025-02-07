@@ -45,7 +45,8 @@
 
         .navigation-graph {
             width: 100%;
-            height: 100%;
+            height: 400px;
+            /* ✅ Hauteur fixe pour un meilleur rendu */
         }
 
         #url-input {
@@ -92,26 +93,28 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/vis-network.min.js"></script>
+    <!-- ✅ CDN Vis Network corrigé -->
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
     <script>
         let network = null;
 
         function initNetwork() {
             const container = document.getElementById('navigation-graph');
-            const data = {
-                nodes: new vis.DataSet([]),
-                edges: new vis.DataSet([])
-            };
+            const data = { nodes: new vis.DataSet([]), edges: new vis.DataSet([]) };
             const options = {
-                physics: {
-                    enabled: true,
-                    stabilization: true
-                },
-                nodes: {
-                    shape: 'box'
-                }
+                physics: { enabled: false }, // ✅ Pas de physique pour plus de stabilité
+                nodes: { shape: 'box' },
+                interaction: { hover: true },
+                layout: { improvedLayout: true }  // ✅ Amélioration automatique de la disposition
             };
-            network = new vis.Network(container, data, options);
+
+            try {
+                network = new vis.Network(container, data, options);
+                network.fit(); // ✅ Ajustement automatique au conteneur
+            } catch (error) {
+                handleResizeObserverError(error);
+            }
         }
 
         async function analyzePage() {
@@ -120,9 +123,7 @@
             try {
                 const response = await fetch('/analyze', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url: url })
                 });
 
@@ -135,22 +136,17 @@
         }
 
         function updateInterface(data) {
-            // Mettre à jour les statistiques
             document.getElementById('internal-links').textContent = data.internal_links.length;
             document.getElementById('external-links').textContent = data.external_links.length;
             document.getElementById('images-count').textContent = data.images_count;
             document.getElementById('tables-count').textContent = data.tables_count;
             document.getElementById('forms-count').textContent = data.forms_count;
 
-            // Mettre à jour le graphe
             if (network === null) {
                 initNetwork();
             }
 
-            const nodes = new vis.DataSet([
-                { id: 1, label: data.title }
-            ]);
-
+            const nodes = new vis.DataSet([{ id: 1, label: data.title }]);
             const edges = new vis.DataSet();
 
             data.internal_links.forEach((link, index) => {
@@ -158,10 +154,32 @@
                 edges.add({ from: 1, to: index + 2 });
             });
 
-            network.setData({ nodes: nodes, edges: edges });
+            try {
+                network.setData({ nodes, edges });
+                network.fit(); // ✅ Ajustement automatique
+            } catch (error) {
+                handleResizeObserverError(error);
+            }
         }
 
-        // Initialiser le réseau au chargement
+        function handleResizeObserverError(error) {
+            if (error.name === 'ResizeObserverLoopError') {
+                console.warn('Erreur de boucle de ResizeObserver ignorée.');
+            } else {
+                throw error;
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            if (network) {
+                try {
+                    network.fit();  // ✅ Ajustement dynamique 
+                } catch (error) {
+                    handleResizeObserverError(error);
+                }
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', initNetwork);
     </script>
 </body>
